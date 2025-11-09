@@ -1,0 +1,29 @@
+body {
+  font-family: sans-serif;
+  background: #fff7e6;
+  text-align: center;
+  margin: 0;
+  padding: 60px;
+}
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+  background: white;
+  padding: 40px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+a.back {
+  display: inline-block;
+  margin-top: 20px;
+  text-decoration: none;
+  color: #0078d7;
+}
+.controls { margin-bottom: 16px; text-align: left; }
+    label { display:block; margin-top:8px; font-weight:600; }
+    textarea { width:100%; box-sizing:border-box; padding:8px; margin-top:6px; }
+    button { margin-top:8px; padding:8px 12px; cursor:pointer; }
+    #comments { margin-top:12px; text-align:left; }
+    .comment { padding:8px; border-bottom:1px solid #eee; background:#fafafa; border-radius:6px; margin-bottom:8px; }
+    .status { font-weight:700; margin-left:8px; }
+    .note { font-size:0.9rem; color:#666; margin-top:6px; }

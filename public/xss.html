@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8">
+  <title>XSS Demo — Stored</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="xss.css">
+</head>
+<body>
+  <div class="container">
+    <h2>XSS</h2>
+    <p>XSS Toggle pali/gaši ranjivost.</p>
+    <p><a href="/" class="back">HOme</a></p>
+
+    <div class="controls">
+      <button id="toggleBtn">Toggle Vulnerability</button>
+      <span class="status" id="vulnState">...učitavanje</span>
+      <p class="note">Kada je <strong>VULNERABLE</strong>, komentari se renderiraju kao HTML (mogu izvršiti <code>&lt;script&gt;</code>).</p>
+    </div>
+
+    <section id="postSection">
+      <label for="comment">Komentar</label>
+      <textarea id="comment" rows="4" placeholder='Npr. &lt;script&gt;alert("XSS")&lt;/script&gt;'></textarea>
+
+      <button id="postComment">Pošalji komentar</button>
+    </section>
+
+    <h3>Lista komentara</h3>
+    <div id="comments"></div>
+  </div>
+
+<script>
+  function escapeHtml(s) {
+    return String(s)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  async function refreshState() {
+    try {
+      const r = await fetch('/xss/state');
+      if (!r.ok) throw new Error('nije dohvat stanja');
+      const js = await r.json();
+      document.getElementById('vulnState').textContent = js.vulnerable ? 'VULNERABLE' : 'SAFE';
+      return js.vulnerable;
+    } catch (e) {
+      document.getElementById('vulnState').textContent = 'GREŠKA';
+      console.error(e);
+      return false;
+    }
+  }
+
+  document.getElementById('toggleBtn').onclick = async () => {
+    try {
+      const r = await fetch('/xss/toggle', { method: 'POST' });
+      if (!r.ok) throw new Error('toggle fail');
+      const js = await r.json();
+      document.getElementById('vulnState').textContent = js.vulnerable ? 'VULNERABLE' : 'SAFE';
+      await loadComments();
+    } catch (e) {
+      console.error(e);
+      alert('Greška prilikom toggle-a');
+    }
+  };
+
+  document.getElementById('postComment').onclick = async () => {
+    const text = document.getElementById('comment').value || '';
+    try {
+      const r = await fetch('/xss/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      if (!r.ok) throw new Error('post fail');
+      document.getElementById('comment').value = '';
+      await loadComments();
+    } catch (e) {
+      console.error(e);
+      alert('Greška pri slanju komentara');
+    }
+  };
+
+    async function loadComments() {
+    try {
+        const r = await fetch('/xss/comments');
+        if (!r.ok) throw new Error('nije dohvaćeno');
+        const data = await r.json();
+        const vuln = data.vulnerable;
+        const container = document.getElementById('comments');
+        container.innerHTML = '';
+        data.comments.forEach(c => {
+        const el = document.createElement('div');
+        el.className = 'comment';
+
+        if (vuln) {
+            el.innerHTML = `#${c.id}: ${c.text}`;
+            const scripts = el.querySelectorAll('script');
+            scripts.forEach(origScript => {
+            const newScript = document.createElement('script');
+
+            if (origScript.src) {
+                newScript.src = origScript.src;
+            } else {
+                newScript.textContent = origScript.textContent;
+            }
+
+            if (origScript.type) newScript.type = origScript.type;
+
+            document.body.appendChild(newScript);
+            setTimeout(() => newScript.remove(), 50);
+            });
+
+        } else {
+            el.textContent = `#${c.id}: ${c.text}`;
+        }
+
+        container.appendChild(el);
+        });
+    } catch (e) {
+        console.error(e);
+        document.getElementById('comments').textContent = 'Greška pri dohvaćanju komentara';
+    }
+    }
+
+  // init
+  (async () => {
+    await refreshState();
+    await loadComments();
+  })();
+</script>
+</body>
+</html>

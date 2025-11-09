@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Broken Access Control</title>
+  <link rel="stylesheet" href="badauth.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Broken Access Control</h1>
+
+
+    <section id="login-section">
+      <h2>Login</h2>
+      <input type="text" id="username" placeholder="Username">
+      <input type="password" id="password" placeholder="Password">
+      <button id="loginBtn">Login</button>
+      <button id="homeBtn">Home</button>
+      <p id="login-msg"></p>
+    </section>
+
+    <section id="admin-section" class="hidden">
+      <h2>Admin Panel Controls</h2>
+      <p id="userInfo"></p>
+      <button id="toggleBtn">Toggle Secure Mode</button>
+      <span id="secureInfo">Admin panel URL: /admin</span>
+      <button id="openAdminBtn">Otvori admin</button>
+      <p id="secureModeMsg">Secure mode: OFF</p>
+      <button id="logoutBtn">Logout</button>
+      <p id="logout-msg"></p>
+      <button id="homeBtn2">Home</button>
+    </section>
+  </div>
+
+<script>
+let secureMode = false;
+let username = "";
+let role = "";
+
+document.getElementById("homeBtn").onclick = () => window.location.href = "/";
+document.getElementById("homeBtn2").onclick = () => window.location.href = "/";
+
+// login
+document.getElementById("loginBtn").onclick = async () => {
+  username = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
+
+  const res = await fetch("/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ username, password })
+  });
+
+  const data = await res.json();
+
+  if (res.ok) {
+    role = data.role;
+    document.getElementById("userInfo").textContent = `Korisnik: ${username} | Role: ${role}`;
+    document.getElementById("login-section").classList.add("hidden");
+    document.getElementById("admin-section").classList.remove("hidden");
+    document.getElementById("login-msg").textContent = "";
+  } else {
+    document.getElementById("login-msg").textContent = `Greška: ${data.error}`;
+  }
+};
+
+// toggle security
+document.getElementById("toggleBtn").onclick = async () => {
+  const res = await fetch("/admin/toggleSecurity", {
+    method: "POST",
+    credentials: "include"
+  });
+  const data = await res.json();
+  secureMode = data.secureMode;
+  document.getElementById("secureModeMsg").textContent = "Secure mode: " + (secureMode ? "ON" : "OFF");
+};
+
+// Otvaranje Admin Panel nove stranice
+document.getElementById("openAdminBtn").onclick = () => {
+  // Admin gumb uvijek provjerava rolu
+  if (role !== "admin") {
+    alert("Nemate ovlasti za otvoriti admin!");
+    return;
+  }
+  window.open("/admin", "_blank");
+};
+
+// logout
+document.getElementById("logoutBtn").onclick = async () => {
+  const res = await fetch("/auth/logout", {
+    method: "POST",
+    credentials: "include"
+  });
+  const data = await res.json();
+  if (res.ok) {
+    role = "";
+    username = "";
+    document.getElementById("logout-msg").textContent = data.message;
+    document.getElementById("admin-section").classList.add("hidden");
+    document.getElementById("login-section").classList.remove("hidden");
+    document.getElementById("userInfo").textContent = "";
+    document.getElementById("secureModeMsg").textContent = "Secure mode: OFF";
+  }
+};
+
+window.onload = async () => {
+  try {
+    // Dohvati trenutno prijavljenog korisnika
+    const sessionRes = await fetch("/auth/session", { credentials: "include" });
+    if (sessionRes.ok) {
+      const data = await sessionRes.json();
+      username = data.username;
+      role = data.role;
+      document.getElementById("userInfo").textContent = `Korisnik: ${username} | Role: ${role}`;
+      document.getElementById("login-section").classList.add("hidden");
+      document.getElementById("admin-section").classList.remove("hidden");
+    }
+
+    // Dohvati trenutno stanje Secure Mode
+    const secureRes = await fetch("/admin/secureMode", { credentials: "include" });
+    if (secureRes.ok) {
+      const secureData = await secureRes.json();
+      secureMode = secureData.secureMode;
+      document.getElementById("secureModeMsg").textContent = "Secure mode: " + (secureMode ? "ON" : "OFF");
+    }
+  } catch (err) {
+    console.error(err);
+  }
+};
+</script>
+</body>
+</html>
